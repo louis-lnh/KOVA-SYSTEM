@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccessLevel {
+  NONE
+  MOD
+  ADMIN
+  FULL
+}
+
+enum VerificationStatus {
+  VERIFIED
+  REVIEW_REQUIRED
+  DENIED_ONCE
+  DENIED_TWICE
+  BANNED
+  BOT_BANNED
+}
+
+enum ApplicationCategory {
+  COMPETITIVE
+  STAFF
+  COMMUNITY
+  CREATIVE
+  PARTNERSHIPS
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id             String                @id @default(cuid())
+  discordId      String                @unique
+  username       String
+  displayName    String?
+  avatarUrl      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  profile        UserProfile?
+  applications   Application[]
+  access         AccessAssignment?
+  verification   VerificationRecord?
+  valorantAccount ValorantAccount?
+  valorantMemberState ValorantMemberState?
+  valorantMatchStats ValorantPlayerMatchStat[]
+  valorantAggregates ValorantPlayerAggregate[]
+  reviews        Application[]         @relation("ApplicationReviewer")
+  auditLogs      AuditLog[]            @relation("AuditActor")
+  websiteContents WebsiteContent[]     @relation("WebsiteContentUpdater")
+  websiteEvents   WebsiteEvent[]       @relation("WebsiteEventUpdater")
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  riotId      String?
+  trackerUrl  String?
+  currentRank String?
+  peakRank    String?
+  mainAgents  String[]
+  region      String?
+  socialLinks String[]
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Application {
+  id               String              @id @default(cuid())
+  userId           String
+  reviewerUserId   String?
+  category         ApplicationCategory
+  subtype          String
+  title            String
+  status           ApplicationStatus   @default(PENDING)
+  archived         Boolean             @default(false)
+  submission       Json
+  internalNotes    String?
+  reviewedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer         User?               @relation("ApplicationReviewer", fields: [reviewerUserId], references: [id])
+}
+
+model AccessAssignment {
+  id               String      @id @default(cuid())
+  userId           String      @unique
+  level            AccessLevel
+  assignedByUserId String?
+  assignedAt       DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationRecord {
+  id           String             @id @default(cuid())
+  userId       String?            @unique
+  discordId    String             @unique
+  status       VerificationStatus
+  reviewReason String?
+  denyCount    Int                @default(0)
+  verifiedAt   DateTime?
+  verifiedBy   String?
+  updatedAt    DateTime           @updatedAt
+  user         User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Tournament {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  status      String
+  startsAt    DateTime?
+  endsAt      DateTime?
+  metadata    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationEvent {
+  id            String   @id @default(cuid())
+  type          String
+  targetChannel String
+  payload       Json
+  scheduledFor  DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorUserId String?
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+}
+
+model WebsiteContent {
+  id              String   @id @default(cuid())
+  section         String   @unique
+  data            Json
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedByUser   User?    @relation("WebsiteContentUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model WebsiteEvent {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  category        String
+  title           String
+  summary         String
+  startsAt        DateTime?
+  endsAt          DateTime?
+  visible         Boolean  @default(true)
+  highlight       Boolean  @default(false)
+  archived        Boolean  @default(false)
+  metadata        Json
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedByUser   User?    @relation("WebsiteEventUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model ValorantAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  puuid          String?  @unique
+  riotGameName   String?
+  riotTagLine    String?
+  region         String?
+  trackerUrl     String?
+  rsoLinkedAt    DateTime?
+  syncEnabled    Boolean  @default(false)
+  lastSyncedAt   DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchStats     ValorantPlayerMatchStat[]
+  aggregates     ValorantPlayerAggregate[]
+}
+
+model ValorantMemberState {
+  id                String               @id @default(cuid())
+  userId            String               @unique
+  teamAssignment    String               @default("none")
+  tournamentEligible Boolean             @default(false)
+  tournamentActive  Boolean              @default(false)
+  premierActive     Boolean              @default(false)
+  leagueActive      Boolean              @default(false)
+  trackRanked       Boolean              @default(true)
+  trackPremier      Boolean              @default(false)
+  trackLeague       Boolean              @default(false)
+  trackTournament   Boolean              @default(false)
+  trackCustoms      Boolean              @default(false)
+  customCaptureMode String               @default("whitelisted_windows")
+  statusNote        String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncWindows       ValorantSyncWindow[]
+}
+
+model ValorantSyncWindow {
+  id              String   @id @default(cuid())
+  memberStateId   String
+  label           String
+  sourceType      String
+  startsAt        DateTime?
+  endsAt          DateTime?
+  enabled         Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  memberState     ValorantMemberState @relation(fields: [memberStateId], references: [id], onDelete: Cascade)
+}
+
+model ValorantMatch {
+  id          String   @id @default(cuid())
+  riotMatchId String   @unique
+  queue       String
+  queueMode   String?
+  map         String?
+  season      String?
+  startedAt   DateTime?
+  rawPayload  Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  playerStats ValorantPlayerMatchStat[]
+}
+
+model ValorantPlayerMatchStat {
+  id            String   @id @default(cuid())
+  matchId        String
+  accountId      String
+  userId         String?
+  queueAccepted  Boolean  @default(true)
+  sourceScope    String   @default("competitive")
+  agent          String?
+  teamSide       String?
+  won            Boolean?
+  kills          Int?
+  deaths         Int?
+  assists        Int?
+  headshots      Int?
+  bodyshots      Int?
+  legshots       Int?
+  acs            Int?
+  kast           Float?
+  damage         Int?
+  plants         Int?
+  defuses        Int?
+  firstBloods    Int?
+  firstDeaths    Int?
+  rawPayload     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  match          ValorantMatch   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  account        ValorantAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([matchId, accountId])
+}
+
+model ValorantPlayerAggregate {
+  id               String   @id @default(cuid())
+  accountId         String
+  userId            String?
+  scope             String
+  leaderboardScope  String?
+  matches           Int      @default(0)
+  wins              Int      @default(0)
+  losses            Int      @default(0)
+  winRate           Float?
+  kd                Float?
+  kda               Float?
+  kast              Float?
+  acs               Float?
+  hsPct             Float?
+  avgKills          Float?
+  avgDeaths         Float?
+  avgAssists        Float?
+  featuredScore     Float?
+  computedAt        DateTime @default(now())
+  metadata          Json
+  account           ValorantAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([accountId, scope, leaderboardScope])
+}

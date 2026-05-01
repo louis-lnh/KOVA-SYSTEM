@@ -1,0 +1,15 @@
+{
+  "name": "kova-system-v2",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo \"Run workspace app scripts directly until task runners are added.\"",
+    "build": "echo \"Run workspace app build scripts directly until task runners are added.\"",
+    "lint": "echo \"Run workspace app lint scripts directly until task runners are added.\"",
+    "typecheck": "echo \"Run workspace app typecheck scripts directly until task runners are added.\""
+  }
+}

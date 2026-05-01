@@ -1,0 +1,61 @@
+{
+  "guildId": "",
+  "memberRoleId": "1483583588518592562",
+  "redirectChannelId": "1485453355646976091",
+  "verifyChannelId": "1485453284285218988",
+  "successLogChannelId": "1485453314253521219",
+  "reviewLogChannelId": "1485453333413236877",
+  "premAnChannelId": "1485463817604300873",
+  "applyInfoChannelId": "1485453456985817219",
+  "applyLogChannelId": "1485464029005877299",
+  "matchChannelId": "1485463914765619250",
+  "applyWebsiteUrl": "https://kova-esports-apply.com",
+  "minimumAccountAgeDays": 7,
+  "applyAccess": {
+    "admin": [],
+    "mod": [],
+    "fullAccess": []
+  },
+  "verification": {
+    "users": {
+      "1197353576616431708": {
+        "discordUserId": "1197353576616431708",
+        "username": "itsbasura.",
+        "globalName": "ItsBasura.",
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1197353576616431708/c28f81b77b9fd95bf2db5ec11f2e9d11.webp",
+        "isBot": false,
+        "accountCreatedAt": "2024-01-18T01:35:38.419Z",
+        "guildJoinedAt": "2026-03-22T22:24:14.482Z",
+        "verified": true,
+        "verifiedAt": "2026-03-23T02:24:27.837Z",
+        "verifyStatus": "verified",
+        "reviewReason": null,
+        "memberRoleGranted": true,
+        "verifiedBy": null,
+        "lastVerificationAttemptAt": "2026-03-23T02:24:27.837Z",
+        "denyCount": 0,
+        "createdAt": 1774232667837,
+        "updatedAt": 1774232667837
+      },
+      "1248919319967039498": {
+        "discordUserId": "1248919319967039498",
+        "username": "vlt_luigi",
+        "globalName": "LUIGI",
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1248919319967039498/9b28ef732a14b1144d11be0897e325b0.webp",
+        "isBot": false,
+        "accountCreatedAt": "2024-06-08T08:39:29.679Z",
+        "guildJoinedAt": "2026-03-17T21:46:43.602Z",
+        "verified": true,
+        "verifiedAt": "2026-03-23T22:37:39.184Z",
+        "verifyStatus": "verified",
+        "reviewReason": null,
+        "memberRoleGranted": true,
+        "verifiedBy": null,
+        "lastVerificationAttemptAt": "2026-03-23T22:37:39.186Z",
+        "denyCount": 0,
+        "createdAt": "2026-03-23T22:37:39.184Z",
+        "updatedAt": 1774305459186
+      }
+    }
+  }
+}

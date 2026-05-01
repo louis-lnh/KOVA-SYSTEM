@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "src",
+    "paths": {
+      "@kova/config": ["../../../packages/config/src/index.ts"],
+      "@kova/database": ["../../../packages/database/src/index.ts"],
+      "@kova/shared": ["../../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ]
+}
