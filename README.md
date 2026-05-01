@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # KOVA System v2
 
 KOVA System v2 is the rebuilt platform for the KOVA Valorant organization.
@@ -40,3 +41,6 @@ OAuth setup for the apply website:
 3. Apply website
 4. Admin panel
 5. Main website
+=======
+# KOVA-SYSTEM
+>>>>>>> 6c326211fa5a9e78914deb7e94c8934ac978bffa
