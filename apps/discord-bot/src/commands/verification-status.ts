@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getVerificationRecord } from "../backend/api-client.js";
 import { createKovaEmbed, formatLabel } from "../services/embeds.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import type { BotCommand } from "../types.js";
 
 export const verificationStatusCommand: BotCommand = {
@@ -20,10 +21,10 @@ export const verificationStatusCommand: BotCommand = {
     const result = await getVerificationRecord(user.id, interaction.user.id);
 
     if (!result.record) {
-      await interaction.reply({
-        content: `No verification record exists yet for <@${user.id}>.`,
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(
+        interaction,
+        `No verification record exists yet for <@${user.id}>.`,
+      );
       return;
     }
 
@@ -48,9 +49,8 @@ export const verificationStatusCommand: BotCommand = {
       },
     );
 
-    await interaction.reply({
+    await sendEphemeralResponse(interaction, {
       embeds: [embed],
-      ephemeral: true,
     });
   },
 };

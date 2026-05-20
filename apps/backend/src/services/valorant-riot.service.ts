@@ -9,6 +9,7 @@ import type {
   ValorantAccountUpsertInput,
   ValorantMatchIngestInput,
 } from "../schemas/valorant-riot.js";
+import { notFound, serviceUnavailable } from "../errors.js";
 import { createAuditLog } from "./audit.service.js";
 
 export type SupportedValorantQueue = "competitive" | "premier" | "league" | "tournament" | "custom";
@@ -62,16 +63,21 @@ export type ValorantSyncPolicy = {
 
 export type ValorantSyncJobRequest = {
   discordId: string;
+  actorDiscordId?: string | null;
   triggeredBy: "admin" | "internal";
   mode: "account_refresh" | "recent_matches" | "full_recompute";
 };
 
 export type ValorantScaffoldJobResult = {
-  status: "scaffolded";
+  status: "blocked" | "completed";
   mode: ValorantSyncJobRequest["mode"];
   discordId: string;
   summary: string;
   policy: ValorantSyncPolicy;
+  apiKeyConfigured: boolean;
+  matchesFetched?: number;
+  matchesIngested?: number;
+  recompute?: Awaited<ReturnType<typeof recomputeValorantAggregatesForDiscordId>>;
 };
 
 type LinkedAccountRow = {
@@ -140,6 +146,10 @@ type RiotMatchlistResponse = {
 
 type RiotMatchResponse = Record<string, unknown>;
 
+type NormalizedRiotMatch = ValorantMatchIngestInput & {
+  riotMatchId: string;
+};
+
 export type RiotIdentityLookupInput = {
   riotGameName: string;
   riotTagLine: string;
@@ -147,7 +157,7 @@ export type RiotIdentityLookupInput = {
 };
 
 export type RiotIdentityLookupResult = {
-  status: "stubbed";
+  status: "manual" | "resolved";
   riotGameName: string;
   riotTagLine: string;
   region: string;
@@ -159,17 +169,151 @@ function normalizeQueueName(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function isRiotApiKeyConfigured() {
+  return Boolean(process.env.RIOT_API_KEY?.trim());
+}
+
 function roundNumber(value: number, digits = 2) {
   const factor = 10 ** digits;
 
   return Math.round(value * factor) / factor;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getRecord(value: unknown, key: string): Record<string, unknown> | null {
+  return asRecord(asRecord(value)?.[key]);
+}
+
+function getArray(value: unknown, key: string): unknown[] {
+  const item = asRecord(value)?.[key];
+
+  return Array.isArray(item) ? item : [];
+}
+
+function getString(value: unknown, key: string): string | null {
+  const item = asRecord(value)?.[key];
+
+  return typeof item === "string" && item.trim() ? item : null;
+}
+
+function getNumber(value: unknown, key: string): number | null {
+  const item = asRecord(value)?.[key];
+
+  return typeof item === "number" && Number.isFinite(item) ? item : null;
+}
+
+function normalizeTeamKey(value: string | null) {
+  return normalizeQueueName(value).replace(/^team/, "");
+}
+
+function findValorantPlayer(detail: RiotMatchResponse, puuid: string) {
+  const players = getRecord(detail, "players");
+  const candidates = [
+    ...getArray(players, "all_players"),
+    ...getArray(players, "red"),
+    ...getArray(players, "blue"),
+    ...getArray(detail, "players"),
+  ];
+
+  return candidates
+    .map((candidate) => asRecord(candidate))
+    .find((candidate) => getString(candidate, "puuid") === puuid) ?? null;
+}
+
+function getTeamWon(detail: RiotMatchResponse, team: string | null) {
+  const normalizedTeam = normalizeTeamKey(team);
+  const teams = getRecord(detail, "teams");
+  const teamRecord =
+    getRecord(teams, normalizedTeam) ??
+    getRecord(teams, normalizedTeam === "red" ? "Red" : "Blue") ??
+    getRecord(teams, `team${normalizedTeam}`);
+
+  const hasWon = asRecord(teamRecord)?.has_won ?? asRecord(teamRecord)?.hasWon;
+
+  return typeof hasWon === "boolean" ? hasWon : null;
+}
+
+function normalizeRiotMatchForPlayer(input: {
+  detail: RiotMatchResponse;
+  fallbackMatchId: string;
+  fallbackStartedAt: number | null;
+  puuid: string;
+}): NormalizedRiotMatch | null {
+  const metadata = getRecord(input.detail, "metadata") ?? {};
+  const player = findValorantPlayer(input.detail, input.puuid);
+
+  if (!player) {
+    return null;
+  }
+
+  const roundsPlayed = getNumber(metadata, "rounds_played");
+  const score = getNumber(player, "score");
+  const startedAtMillis =
+    getNumber(metadata, "game_start") ??
+    getNumber(metadata, "gameStart") ??
+    input.fallbackStartedAt;
+  const queue =
+    getString(metadata, "queue") ??
+    getString(metadata, "mode") ??
+    "competitive";
+  const team = getString(player, "team");
+  const acs =
+    roundsPlayed && score !== null
+      ? Math.round(score / Math.max(roundsPlayed, 1))
+      : null;
+
+  return {
+    riotMatchId:
+      getString(metadata, "matchid") ??
+      getString(metadata, "matchId") ??
+      input.fallbackMatchId,
+    match: {
+      riotMatchId:
+        getString(metadata, "matchid") ??
+        getString(metadata, "matchId") ??
+        input.fallbackMatchId,
+      queue,
+      queueMode: getString(metadata, "mode"),
+      map: getString(metadata, "map"),
+      season: getString(metadata, "season_id") ?? getString(metadata, "seasonId"),
+      startedAt: startedAtMillis ? new Date(startedAtMillis).toISOString() : null,
+      rawPayload: input.detail,
+    },
+    player: {
+      agent: getString(player, "character"),
+      teamSide: team,
+      won: getTeamWon(input.detail, team),
+      kills: getNumber(player, "kills"),
+      deaths: getNumber(player, "deaths"),
+      assists: getNumber(player, "assists"),
+      headshots: getNumber(player, "headshots"),
+      bodyshots: getNumber(player, "bodyshots"),
+      legshots: getNumber(player, "legshots"),
+      acs,
+      kast: null,
+      damage: getNumber(player, "damage_made"),
+      plants: getNumber(player, "plants"),
+      defuses: getNumber(player, "defuses"),
+      firstBloods: getNumber(player, "first_bloods"),
+      firstDeaths: getNumber(player, "first_deaths"),
+      rawPayload: player,
+    },
+  };
+}
+
 function getRiotApiKey() {
   const apiKey = process.env.RIOT_API_KEY?.trim();
 
   if (!apiKey) {
-    throw new Error("RIOT_API_KEY is not configured in apps/backend/.env yet.");
+    throw serviceUnavailable(
+      "RIOT_API_KEY is not configured. Add it to the backend environment after Riot approval.",
+      "riot_api_key_missing",
+    );
   }
 
   return apiKey;
@@ -223,7 +367,10 @@ async function riotApiRequest<T>(url: string): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Riot API request failed (${response.status}): ${text}`);
+    throw serviceUnavailable(
+      `Riot API request failed (${response.status}): ${text}`,
+      "riot_api_request_failed",
+    );
   }
 
   return (await response.json()) as T;
@@ -367,7 +514,7 @@ export async function lookupRiotIdentity(
   );
 
   return {
-    status: "stubbed",
+    status: "resolved",
     riotGameName: data.gameName ?? input.riotGameName,
     riotTagLine: data.tagLine ?? input.riotTagLine,
     region: input.region,
@@ -392,14 +539,23 @@ export async function upsertValorantAccountForDiscordId(input: {
   const user = await getUserByDiscordId(input.discordId);
 
   if (!user) {
-    throw new Error("User not found for Valorant account link");
+    throw notFound("User not found for Valorant account link", "user_not_found");
   }
 
-  const lookedUpIdentity = await lookupRiotIdentity({
-    riotGameName: input.account.riotGameName,
-    riotTagLine: input.account.riotTagLine,
-    region: input.account.region,
-  });
+  const lookedUpIdentity: RiotIdentityLookupResult = input.account.puuid
+    ? {
+        status: "manual",
+        riotGameName: input.account.riotGameName,
+        riotTagLine: input.account.riotTagLine,
+        region: input.account.region,
+        puuid: input.account.puuid,
+        note: "PUUID was provided manually, so Riot lookup was skipped.",
+      }
+    : await lookupRiotIdentity({
+        riotGameName: input.account.riotGameName,
+        riotTagLine: input.account.riotTagLine,
+        region: input.account.region,
+      });
 
   await prisma.$executeRawUnsafe(
     `
@@ -569,7 +725,10 @@ export async function fetchRecentValorantMatchesForDiscordId(input: {
   const account = await getValorantAccountByDiscordId(input.discordId);
 
   if (!account) {
-    throw new Error("No linked Valorant account found for this user");
+    throw notFound(
+      "No linked Valorant account found for this user",
+      "valorant_account_not_found",
+    );
   }
 
   const region = account.region ?? "eu";
@@ -601,7 +760,10 @@ export async function fetchRecentValorantMatchesForDiscordId(input: {
   }
 
   if (!puuid) {
-    throw new Error("Could not resolve a PUUID for this Valorant account.");
+    throw notFound(
+      "Could not resolve a PUUID for this Valorant account.",
+      "valorant_puuid_not_found",
+    );
   }
 
   const host = resolveRiotRegionalHost(region);
@@ -633,6 +795,64 @@ export async function fetchRecentValorantMatchesForDiscordId(input: {
     puuid,
     count: matches.filter(Boolean).length,
     matches: matches.filter((item): item is NonNullable<typeof item> => item !== null),
+  };
+}
+
+export async function syncRecentValorantMatchesForDiscordId(input: {
+  discordId: string;
+  actorDiscordId?: string | null;
+  limit?: number;
+}) {
+  const recent = await fetchRecentValorantMatchesForDiscordId({
+    discordId: input.discordId,
+    limit: input.limit ?? 10,
+  });
+
+  const normalizedMatches = recent.matches
+    .map((match) =>
+      normalizeRiotMatchForPlayer({
+        detail: match.detail,
+        fallbackMatchId: match.matchId,
+        fallbackStartedAt: match.gameStartTimeMillis,
+        puuid: recent.puuid,
+      }),
+    )
+    .filter((match): match is NormalizedRiotMatch => match !== null);
+
+  const ingested = [];
+
+  for (const match of normalizedMatches) {
+    ingested.push(
+      await ingestValorantMatchForDiscordId({
+        discordId: input.discordId,
+        reviewerDiscordId: input.actorDiscordId ?? null,
+        payload: {
+          match: match.match,
+          player: match.player,
+        },
+      }),
+    );
+  }
+
+  const accountRow = await getValorantAccountRecordForDiscordId(input.discordId);
+
+  if (accountRow) {
+    await prisma.$executeRawUnsafe(
+      `
+        UPDATE "ValorantAccount"
+        SET "lastSyncedAt" = NOW(), "updatedAt" = NOW()
+        WHERE "id" = $1
+      `,
+      accountRow.id,
+    );
+  }
+
+  return {
+    account: await getValorantAccountByDiscordId(input.discordId),
+    matchesFetched: recent.count,
+    matchesNormalized: normalizedMatches.length,
+    matchesIngested: ingested.length,
+    ingested,
   };
 }
 
@@ -681,7 +901,10 @@ export async function ingestValorantMatchForDiscordId(input: {
   const accountRow = await getValorantAccountRecordForDiscordId(input.discordId);
 
   if (!accountRow) {
-    throw new Error("No linked Valorant account found for this user");
+    throw notFound(
+      "No linked Valorant account found for this user",
+      "valorant_account_not_found",
+    );
   }
 
   const policy = await getValorantSyncPolicyForDiscordId(input.discordId);
@@ -742,7 +965,7 @@ export async function ingestValorantMatchForDiscordId(input: {
   const matchId = matchRows[0]?.id;
 
   if (!matchId) {
-    throw new Error("Failed to persist Valorant match");
+    throw serviceUnavailable("Failed to persist Valorant match", "valorant_match_persist_failed");
   }
 
   await prisma.$executeRawUnsafe(
@@ -879,14 +1102,114 @@ export async function scheduleValorantAccountSync(
   input: ValorantSyncJobRequest,
 ): Promise<ValorantScaffoldJobResult> {
   const policy = await getValorantSyncPolicyForDiscordId(input.discordId);
+  const apiKeyConfigured = isRiotApiKeyConfigured();
+
+  await createAuditLog({
+    actorDiscordId: input.actorDiscordId ?? null,
+    action: "valorant.sync_scheduled",
+    targetType: "valorant_account",
+    targetId: input.discordId,
+    metadata: {
+      discordId: input.discordId,
+      triggeredBy: input.triggeredBy,
+      mode: input.mode,
+      hasLinkedAccount: policy.hasLinkedAccount,
+      allowedQueues: policy.allowedQueues,
+      apiKeyConfigured,
+    },
+  });
+
+  if (!apiKeyConfigured && input.mode !== "full_recompute") {
+    return {
+      status: "blocked",
+      mode: input.mode,
+      discordId: input.discordId,
+      apiKeyConfigured,
+      summary:
+        "Riot sync engine is wired, but live Riot calls are blocked until RIOT_API_KEY is configured. Manual account linking and manual match ingest still work.",
+      policy,
+    };
+  }
+
+  if (input.mode === "account_refresh") {
+    const account = policy.linkedAccount;
+
+    if (!account) {
+      return {
+        status: "blocked",
+        mode: input.mode,
+        discordId: input.discordId,
+        apiKeyConfigured,
+        summary: "No linked Valorant account exists yet for this Discord user.",
+        policy,
+      };
+    }
+
+    if (!account.riotGameName || !account.riotTagLine) {
+      return {
+        status: "blocked",
+        mode: input.mode,
+        discordId: input.discordId,
+        apiKeyConfigured,
+        summary: "The linked Valorant account is missing Riot ID fields.",
+        policy,
+      };
+    }
+
+    await upsertValorantAccountForDiscordId({
+      discordId: input.discordId,
+      reviewerDiscordId: input.actorDiscordId ?? null,
+      account: {
+        riotGameName: account.riotGameName,
+        riotTagLine: account.riotTagLine,
+        region: account.region ?? "eu",
+        trackerUrl: account.trackerUrl,
+        syncEnabled: account.syncEnabled,
+      },
+    });
+
+    return {
+      status: "completed",
+      mode: input.mode,
+      discordId: input.discordId,
+      apiKeyConfigured,
+      summary: "Valorant account identity was refreshed from Riot.",
+      policy: await getValorantSyncPolicyForDiscordId(input.discordId),
+    };
+  }
+
+  if (input.mode === "full_recompute") {
+    const recompute = await recomputeValorantAggregatesForDiscordId(input.discordId);
+
+    return {
+      status: "completed",
+      mode: input.mode,
+      discordId: input.discordId,
+      apiKeyConfigured,
+      summary: "Stored Valorant aggregates were recomputed from local match data.",
+      policy: recompute.policy,
+      recompute,
+    };
+  }
+
+  const sync = await syncRecentValorantMatchesForDiscordId({
+    discordId: input.discordId,
+    actorDiscordId: input.actorDiscordId ?? null,
+    limit: 10,
+  });
+  const recompute = await recomputeValorantAggregatesForDiscordId(input.discordId);
 
   return {
-    status: "scaffolded",
+    status: "completed",
     mode: input.mode,
     discordId: input.discordId,
+    apiKeyConfigured,
+    matchesFetched: sync.matchesFetched,
+    matchesIngested: sync.matchesIngested,
+    recompute,
     summary:
-      "Riot sync job scaffolding is ready. The real Riot API wiring, queue fetch, normalization, and aggregate persistence will plug into this policy next.",
-    policy,
+      "Riot recent-match sync completed: fetched match history, normalized player stats, persisted accepted matches, and recomputed aggregates.",
+    policy: recompute.policy,
   };
 }
 

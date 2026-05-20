@@ -12,4 +12,4 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
-
+apps/discord-bot/.runtime-config/

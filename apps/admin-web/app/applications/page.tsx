@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AdminShell } from "../../components/admin-shell";
 import { ApplicationManagement } from "../../components/application-management";
 import { SessionGate } from "../../components/session-gate";
@@ -8,7 +9,12 @@ export default function ApplicationsPage() {
   return (
     <AdminShell>
       <section className="page-header page-header--centered">
-        <div className="tag">Application Management</div>
+        <div className="page-header__row">
+          <div className="tag">Application Management</div>
+          <Link href="/actions" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Review incoming applications</h1>
         <p className="page-copy">
           Mods, admins, and full-access users can filter the application queue,

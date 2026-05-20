@@ -1,5 +1,6 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { getActorSession } from "../backend/api-client.js";
+import { sendEphemeralResponse } from "./interaction-response.js";
 import type { BotAccessLevel } from "../types.js";
 
 const accessOrder: Record<BotAccessLevel, number> = {
@@ -18,11 +19,10 @@ export async function ensureCommandAccess(
   try {
     session = await getActorSession(interaction.user.id);
   } catch {
-    await interaction.reply({
-      content:
-        "The bot could not reach the KOVA backend. Make sure the backend API is running and the bot backend URL is correct.",
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      "The bot could not reach the KOVA backend. Make sure the backend API is running and the bot backend URL is correct.",
+    );
 
     return false;
   }
@@ -33,10 +33,10 @@ export async function ensureCommandAccess(
     return true;
   }
 
-  await interaction.reply({
-    content: `You need \`${requiredAccess}\` access to use this command. Your current level is \`${actorLevel}\`.`,
-    ephemeral: true,
-  });
+  await sendEphemeralResponse(
+    interaction,
+    `You need \`${requiredAccess}\` access to use this command. Your current level is \`${actorLevel}\`.`,
+  );
 
   return false;
 }

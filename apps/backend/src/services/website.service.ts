@@ -6,7 +6,9 @@ import type {
   WebsiteEventCreateInput,
   WebsiteEventUpdateInput,
 } from "../schemas/website.js";
+import { notFound } from "../errors.js";
 import { createAuditLog } from "./audit.service.js";
+import { createWebsiteEventCreatedNotification } from "./notifications.service.js";
 import { getUserByDiscordId } from "./users.service.js";
 
 type WebsiteContentRow = {
@@ -231,6 +233,24 @@ export async function createWebsiteEvent(input: {
 
   const event = rows[0] ? mapWebsiteEventRow(rows[0]) : null;
 
+  if (event && event.visible && !event.archived) {
+    await createWebsiteEventCreatedNotification({
+      eventId: event.id,
+      slug: event.slug,
+      category: event.category,
+      title: event.title,
+      summary: event.summary,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      visible: event.visible,
+      highlight: event.highlight,
+      archived: event.archived,
+      eventLabel: event.metadata.eventLabel ?? null,
+      seasonTag: event.metadata.seasonTag ?? null,
+      participationNote: event.metadata.participationNote ?? null,
+    });
+  }
+
   await createAuditLog({
     actorDiscordId: input.reviewerDiscordId,
     action: "website.event_created",
@@ -283,7 +303,7 @@ export async function updateWebsiteEvent(input: {
   const existing = existingRows[0];
 
   if (!existing) {
-    throw new Error("Website event not found");
+    throw notFound("Website event not found", "website_event_not_found");
   }
 
   await prisma.$executeRawUnsafe(
@@ -403,7 +423,7 @@ export async function deleteWebsiteEvent(input: {
   const existing = existingRows[0];
 
   if (!existing) {
-    throw new Error("Website event not found");
+    throw notFound("Website event not found", "website_event_not_found");
   }
 
   await prisma.$executeRawUnsafe(

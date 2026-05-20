@@ -1,5 +1,6 @@
 import { prisma } from "@kova/database";
 import type { AccessLevel } from "@kova/shared";
+import { createAuditLog } from "./audit.service.js";
 import { ensureUserByDiscordId, getUserByDiscordId } from "./users.service.js";
 
 export async function getAccessByDiscordId(discordId: string) {
@@ -52,6 +53,17 @@ export async function assignAccessByDiscordId(input: {
       userId: targetUser.id,
       level,
       assignedByUserId: assignedByUser?.id ?? null,
+    },
+  });
+
+  await createAuditLog({
+    actorDiscordId: input.assignedByDiscordId,
+    action: "access.assigned",
+    targetType: "access_assignment",
+    targetId: access.id,
+    metadata: {
+      targetDiscordId: input.targetDiscordId,
+      level: input.level,
     },
   });
 

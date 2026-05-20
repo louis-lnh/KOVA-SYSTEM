@@ -7,7 +7,9 @@ export type RuntimeConfigKey =
   | "memberRoleId"
   | "reviewChannelId"
   | "successLogChannelId"
-  | "verifyChannelId";
+  | "verifyChannelId"
+  | "websiteEventsChannelId"
+  | "tournamentAnnouncementsChannelId";
 
 export interface RuntimeConfig {
   applicationReviewChannelId: string | null;
@@ -15,6 +17,8 @@ export interface RuntimeConfig {
   reviewChannelId: string | null;
   successLogChannelId: string | null;
   verifyChannelId: string | null;
+  websiteEventsChannelId: string | null;
+  tournamentAnnouncementsChannelId: string | null;
 }
 
 const configPath = resolve(process.cwd(), ".runtime-config", "bot-config.json");
@@ -25,6 +29,9 @@ const defaultConfig: RuntimeConfig = {
   reviewChannelId: botEnv.DEFAULT_REVIEW_CHANNEL_ID,
   successLogChannelId: botEnv.DEFAULT_SUCCESS_LOG_CHANNEL_ID,
   verifyChannelId: botEnv.DEFAULT_VERIFY_CHANNEL_ID,
+  websiteEventsChannelId: botEnv.DEFAULT_WEBSITE_EVENTS_CHANNEL_ID,
+  tournamentAnnouncementsChannelId:
+    botEnv.DEFAULT_TOURNAMENT_ANNOUNCEMENTS_CHANNEL_ID,
 };
 
 export function getRuntimeConfig(): RuntimeConfig {
@@ -43,6 +50,11 @@ export function getRuntimeConfig(): RuntimeConfig {
       successLogChannelId:
         parsed.successLogChannelId ?? defaultConfig.successLogChannelId,
       verifyChannelId: parsed.verifyChannelId ?? defaultConfig.verifyChannelId,
+      websiteEventsChannelId:
+        parsed.websiteEventsChannelId ?? defaultConfig.websiteEventsChannelId,
+      tournamentAnnouncementsChannelId:
+        parsed.tournamentAnnouncementsChannelId ??
+        defaultConfig.tournamentAnnouncementsChannelId,
     };
   } catch {
     return { ...defaultConfig };

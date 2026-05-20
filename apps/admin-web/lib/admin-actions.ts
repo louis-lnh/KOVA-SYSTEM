@@ -34,6 +34,14 @@ export const adminActionCategories: AdminActionCategory[] = [
     status: "planned",
   },
   {
+    id: "audit",
+    title: "Audit Logs",
+    description: "Inspect staff, bot, OAuth, Valorant, website, and system activity by subtype.",
+    minimumAccess: "admin",
+    status: "live",
+    href: "/audit",
+  },
+  {
     id: "commands",
     title: "Command Center",
     description: "Manage announcement workflows, tournament setup, and command-side content.",

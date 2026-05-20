@@ -154,8 +154,8 @@ export function ApplicationReview({
             Review the full application, confirm staff notes, and update the application state.
           </p>
         </div>
-        <Link className="button button--secondary review-page__back" href="/applications">
-          Back to Queue
+        <Link className="tag tag--action review-page__back" href="/applications">
+          Back
         </Link>
       </div>
 

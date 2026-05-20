@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { assignAccess } from "../backend/api-client.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import type { BotCommand } from "../types.js";
 
 export const setAccessCommand: BotCommand = {
@@ -40,9 +41,9 @@ export const setAccessCommand: BotCommand = {
       level,
     });
 
-    await interaction.reply({
-      content: `Access for <@${user.id}> set to \`${result.level}\`.`,
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      `Access for <@${user.id}> set to \`${result.level}\`.`,
+    );
   },
 };

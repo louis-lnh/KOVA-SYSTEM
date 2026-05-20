@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getAccessForDiscordId } from "../backend/api-client.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import type { BotCommand } from "../types.js";
 
 export const checkAccessCommand: BotCommand = {
@@ -18,9 +19,9 @@ export const checkAccessCommand: BotCommand = {
     const user = interaction.options.getUser("user", true);
     const result = await getAccessForDiscordId(user.id, interaction.user.id);
 
-    await interaction.reply({
-      content: `Access for <@${user.id}> is currently \`${result.level}\`.`,
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      `Access for <@${user.id}> is currently \`${result.level}\`.`,
+    );
   },
 };

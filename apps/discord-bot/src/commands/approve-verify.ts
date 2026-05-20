@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { decideVerification } from "../backend/api-client.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import { ensureManualVerificationApproval } from "../services/verification-service.js";
 import type { BotCommand } from "../types.js";
 
@@ -27,9 +28,9 @@ export const approveVerifyCommand: BotCommand = {
       decision: "approve",
     });
 
-    await interaction.reply({
-      content: `Verification approved for <@${user.id}>. New status: \`${result.record.status}\`. ${followUp}`,
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      `Verification approved for <@${user.id}>. New status: \`${result.record.status}\`. ${followUp}`,
+    );
   },
 };

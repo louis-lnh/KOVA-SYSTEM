@@ -27,7 +27,8 @@ export async function registerValorantRiotRoutes(app: FastifyInstance) {
     }
 
     return {
-      status: "scaffolded",
+      status: process.env.RIOT_API_KEY?.trim() ? "ready" : "waiting_for_api_key",
+      apiKeyConfigured: Boolean(process.env.RIOT_API_KEY?.trim()),
       scopes: listSupportedLeaderboardScopes(),
       rules: getValorantMatchAcceptanceRules(),
     };
@@ -72,23 +73,37 @@ export async function registerValorantRiotRoutes(app: FastifyInstance) {
     return { items };
   });
 
-  app.get("/history/:discordId", async (request, reply) => {
-    const actor = await requireAdminAccess(request, reply);
+  app.get(
+    "/history/:discordId",
+    {
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireAdminAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const { discordId } = request.params as { discordId: string };
-    const query = request.query as { limit?: string };
-    const limit = query.limit ? Number.parseInt(query.limit, 10) : 5;
-    const result = await fetchRecentValorantMatchesForDiscordId({
-      discordId,
-      limit: Number.isFinite(limit) ? limit : 5,
-    });
+      const { discordId } = request.params as { discordId: string };
+      const query = request.query as { limit?: string };
+      const requestedLimit = query.limit ? Number.parseInt(query.limit, 10) : 5;
+      const limit = Number.isFinite(requestedLimit)
+        ? Math.min(Math.max(requestedLimit, 1), 20)
+        : 5;
+      const result = await fetchRecentValorantMatchesForDiscordId({
+        discordId,
+        limit,
+      });
 
-    return { result };
-  });
+      return { result };
+    },
+  );
 
   app.put("/account/:discordId", async (request, reply) => {
     const actor = await requireAdminAccess(request, reply);
@@ -142,31 +157,43 @@ export async function registerValorantRiotRoutes(app: FastifyInstance) {
     return { result };
   });
 
-  app.post("/sync/:discordId", async (request, reply) => {
-    const actor = await requireAdminAccess(request, reply);
+  app.post(
+    "/sync/:discordId",
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireAdminAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const { discordId } = request.params as { discordId: string };
-    const parseBody = valorantRiotSyncRequestSchema.safeParse(request.body);
+      const { discordId } = request.params as { discordId: string };
+      const parseBody = valorantRiotSyncRequestSchema.safeParse(request.body);
 
-    if (!parseBody.success) {
-      return reply.code(400).send({
-        error: "Invalid Valorant Riot sync payload",
-        issues: parseBody.error.flatten(),
+      if (!parseBody.success) {
+        return reply.code(400).send({
+          error: "Invalid Valorant Riot sync payload",
+          issues: parseBody.error.flatten(),
+        });
+      }
+
+      const job = await scheduleValorantAccountSync({
+        discordId,
+        actorDiscordId: actor.discordId ?? null,
+        triggeredBy: "admin",
+        mode: parseBody.data.mode,
       });
-    }
 
-    const job = await scheduleValorantAccountSync({
-      discordId,
-      triggeredBy: "admin",
-      mode: parseBody.data.mode,
-    });
-
-    return { job };
-  });
+      return { job };
+    },
+  );
 
   app.post("/recompute/:discordId", async (request, reply) => {
     const actor = await requireAdminAccess(request, reply);

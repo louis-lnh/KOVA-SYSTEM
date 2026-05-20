@@ -53,7 +53,12 @@ export default function WebsitePage() {
   return (
     <AdminShell>
       <section className="page-header page-header--centered">
-        <div className="tag">Main Website</div>
+        <div className="page-header__row">
+          <div className="tag">Main Website</div>
+          <Link href="/actions" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Manage public website areas</h1>
         <p className="page-copy">
           This section is the admin home for KOVA&apos;s public-site content

@@ -71,56 +71,78 @@ export async function registerVerificationRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/internal/upsert", async (request, reply) => {
-    const actor = await requireInternalAccess(request, reply);
+  app.post(
+    "/internal/upsert",
+    {
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireInternalAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const parseResult = verificationUpsertSchema.safeParse(request.body);
+      const parseResult = verificationUpsertSchema.safeParse(request.body);
 
-    if (!parseResult.success) {
-      return reply.code(400).send({
-        error: "Invalid verification upsert payload",
-        issues: parseResult.error.flatten(),
+      if (!parseResult.success) {
+        return reply.code(400).send({
+          error: "Invalid verification upsert payload",
+          issues: parseResult.error.flatten(),
+        });
+      }
+
+      const record = await upsertVerificationRecord({
+        actorDiscordId: null,
+        payload: parseResult.data,
       });
-    }
 
-    const record = await upsertVerificationRecord({
-      actorDiscordId: null,
-      payload: parseResult.data,
-    });
-
-    return reply.code(201).send({
-      record,
-    });
-  });
-
-  app.post("/decision", async (request, reply) => {
-    const actor = await requireAdminAccess(request, reply);
-
-    if (!actor) {
-      return;
-    }
-
-    const parseResult = verificationDecisionSchema.safeParse(request.body);
-
-    if (!parseResult.success) {
-      return reply.code(400).send({
-        error: "Invalid verification decision payload",
-        issues: parseResult.error.flatten(),
+      return reply.code(201).send({
+        record,
       });
-    }
+    },
+  );
 
-    const result = await applyVerificationDecision({
-      actorDiscordId: actor.discordId,
-      payload: parseResult.data,
-    });
+  app.post(
+    "/decision",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireAdminAccess(request, reply);
 
-    return {
-      record: result.record,
-      effect: result.effect,
-    };
-  });
+      if (!actor) {
+        return;
+      }
+
+      const parseResult = verificationDecisionSchema.safeParse(request.body);
+
+      if (!parseResult.success) {
+        return reply.code(400).send({
+          error: "Invalid verification decision payload",
+          issues: parseResult.error.flatten(),
+        });
+      }
+
+      const result = await applyVerificationDecision({
+        actorDiscordId: actor.discordId,
+        payload: parseResult.data,
+      });
+
+      return {
+        record: result.record,
+        effect: result.effect,
+      };
+    },
+  );
 }

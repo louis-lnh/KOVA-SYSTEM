@@ -5,6 +5,7 @@ import type {
   ValorantSyncWindowCreateInput,
   ValorantSyncWindowUpdateInput,
 } from "../schemas/valorant-system.js";
+import { badRequest, notFound } from "../errors.js";
 import { createAuditLog } from "./audit.service.js";
 import { getUserByDiscordId } from "./users.service.js";
 
@@ -211,7 +212,7 @@ export async function upsertValorantMemberState(input: {
   const targetUser = await getUserByDiscordId(input.discordId);
 
   if (!targetUser) {
-    throw new Error("User not found for Valorant member state");
+    throw notFound("User not found for Valorant member state", "user_not_found");
   }
 
   const createdId = randomUUID();
@@ -376,7 +377,7 @@ export async function createValorantSyncWindow(input: {
   const targetUser = await getUserByDiscordId(input.window.discordId);
 
   if (!targetUser) {
-    throw new Error("User not found for Valorant sync window");
+    throw notFound("User not found for Valorant sync window", "user_not_found");
   }
 
   const stateRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
@@ -387,7 +388,10 @@ export async function createValorantSyncWindow(input: {
   const stateId = stateRows[0]?.id;
 
   if (!stateId) {
-    throw new Error("Create the member state before adding sync windows");
+    throw badRequest(
+      "Create the member state before adding sync windows",
+      "valorant_member_state_required",
+    );
   }
 
   const createdId = randomUUID();
@@ -491,7 +495,7 @@ export async function updateValorantSyncWindow(input: {
   const existing = existingRows[0];
 
   if (!existing) {
-    throw new Error("Valorant sync window not found");
+    throw notFound("Valorant sync window not found", "valorant_sync_window_not_found");
   }
 
   await prisma.$executeRawUnsafe(

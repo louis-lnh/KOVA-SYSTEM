@@ -1,5 +1,7 @@
 import {
+  ButtonInteraction,
   Client,
+  ChatInputCommandInteraction,
   Collection,
   GatewayIntentBits,
   MessageFlags,
@@ -9,6 +11,7 @@ import { commands } from "./commands/index.js";
 import { deployCommands } from "./deploy-commands.js";
 import { startApplicationNotificationPolling } from "./services/application-notifications.js";
 import { ensureCommandAccess } from "./services/command-access.js";
+import { sendEphemeralResponse } from "./services/interaction-response.js";
 import { processVerification } from "./services/verification-service.js";
 import type { BotCommand } from "./types.js";
 
@@ -23,7 +26,11 @@ for (const command of commands) {
 
 client.once("ready", async () => {
   console.log(`KOVA bot logged in as ${client.user?.tag ?? "unknown-user"}`);
-  await deployCommands();
+  try {
+    await deployCommands();
+  } catch (error) {
+    console.error("Discord command deployment failed:", error);
+  }
   startApplicationNotificationPolling(client);
 });
 
@@ -60,6 +67,8 @@ client.on("interactionCreate", async (interaction) => {
         return;
       }
 
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
       const result = await processVerification(member);
       const redirectText = result.redirectChannelId
         ? ` Go to <#${result.redirectChannelId}>.`
@@ -72,10 +81,7 @@ client.on("interactionCreate", async (interaction) => {
         bot_banned: "Bots/apps cannot be verified.",
       };
 
-      await interaction.reply({
-        content: contentMap[result.outcome],
-        flags: MessageFlags.Ephemeral,
-      });
+      await sendEphemeralResponse(interaction, contentMap[result.outcome]);
       return;
     }
 
@@ -86,12 +92,11 @@ client.on("interactionCreate", async (interaction) => {
     const command = commandMap.get(interaction.commandName);
 
     if (!command) {
-      await interaction.reply({
-        content: "Command not found.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(interaction, "Command not found.");
       return;
     }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     if (command.requiredAccess) {
       const hasAccess = await ensureCommandAccess(interaction, command.requiredAccess);
@@ -108,26 +113,32 @@ client.on("interactionCreate", async (interaction) => {
       error instanceof Error &&
       (error.message.includes("fetch failed") ||
         error.message.includes("Backend request failed"));
+    const discordErrorCode =
+      typeof error === "object" &&
+      error &&
+      "code" in error &&
+      typeof error.code === "number"
+        ? error.code
+        : null;
+
+    if (discordErrorCode === 10062 || discordErrorCode === 40060) {
+      console.warn(
+        "Ignoring expired or already-acknowledged interaction.",
+        discordErrorCode,
+      );
+      return;
+    }
 
     if (!interaction.isRepliable()) {
       return;
     }
 
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({
-        content: isBackendConnectivityIssue
-          ? "The bot could not reach the KOVA backend. Check that the backend is running and the bot backend URL is correct."
-          : "Something went wrong while executing that command.",
-        ephemeral: true,
-      });
-    } else {
-      await interaction.reply({
-        content: isBackendConnectivityIssue
-          ? "The bot could not reach the KOVA backend. Check that the backend is running and the bot backend URL is correct."
-          : "Something went wrong while executing that command.",
-        ephemeral: true,
-      });
-    }
+    await sendEphemeralResponse(
+      interaction as ChatInputCommandInteraction | ButtonInteraction,
+      isBackendConnectivityIssue
+        ? "The bot could not reach the KOVA backend. Check that the backend is running and the bot backend URL is correct."
+        : "Something went wrong while executing that command.",
+    );
   }
 });
 

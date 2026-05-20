@@ -497,15 +497,17 @@ textarea {
   font-size: 1.7rem;
 }
 
-.team-stage:hover .team-stage__card {
-  opacity: 0.84;
-}
+@media (hover: hover) and (pointer: fine) {
+  .team-stage:hover .team-stage__card {
+    opacity: 0.84;
+  }
 
-.team-stage__card:hover {
-  opacity: 1;
-  transform: translateY(-6px) scale(1.01);
-  border-color: rgba(241, 214, 154, 0.34);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+  .team-stage__card:hover {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.01);
+    border-color: rgba(241, 214, 154, 0.34);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+  }
 }
 
 .player-card__rank-mark {
@@ -528,9 +530,11 @@ textarea {
   display: block;
 }
 
-.team-stage__card:hover .player-card__rank-mark {
-  opacity: 0.2;
-  transform: translateX(50%) scale(1.03);
+@media (hover: hover) and (pointer: fine) {
+  .team-stage__card:hover .player-card__rank-mark {
+    opacity: 0.2;
+    transform: translateX(50%) scale(1.03);
+  }
 }
 
 .team-stage__card--featured {
@@ -586,8 +590,10 @@ textarea {
   text-shadow: 0 0 22px rgba(241, 214, 154, 0.08);
 }
 
-.team-stage__card--featured:hover .player-card__feature-mark {
-  opacity: 0;
+@media (hover: hover) and (pointer: fine) {
+  .team-stage__card--featured:hover .player-card__feature-mark {
+    opacity: 0;
+  }
 }
 
 .player-card__content {
@@ -914,9 +920,41 @@ textarea {
   }
 
   .page-grid,
-  .detail-pill-grid,
-  .team-stage {
+  .detail-pill-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .team-stage {
+    display: flex;
+    align-items: stretch;
+    gap: 0.85rem;
+    width: calc(100vw - 1.5rem);
+    margin: 1.6rem calc(50% - 50vw + 0.75rem) 0;
+    padding: 0 0.75rem 0.5rem;
+    transform: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 0.75rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+
+  .team-stage__card {
+    flex: 0 0 min(84vw, 31rem);
+    min-height: 27.5rem;
+    scroll-snap-align: center;
+  }
+
+  .team-stage__card--featured,
+  .team-stage__card--mid,
+  .team-stage__card--side {
+    height: auto;
+  }
+
+  .player-card__rank-mark {
+    opacity: 0.12;
+    transform: translateX(50%) scale(1.02);
   }
 
   .member-board {
@@ -929,8 +967,24 @@ textarea {
   }
 
   .team-stage__card--featured {
-    grid-column: 1 / -1;
-    height: auto;
+    order: 1;
+    min-height: 30rem;
+  }
+
+  .team-stage__card:nth-child(2) {
+    order: 2;
+  }
+
+  .team-stage__card:nth-child(4) {
+    order: 3;
+  }
+
+  .team-stage__card:nth-child(1) {
+    order: 4;
+  }
+
+  .team-stage__card:nth-child(5) {
+    order: 5;
   }
 
   .player-card__stats-grid--featured {
@@ -949,15 +1003,21 @@ textarea {
   }
 
   .page-grid,
-  .detail-pill-grid,
-  .team-stage {
+  .detail-pill-grid {
     grid-template-columns: 1fr;
   }
 
   .team-stage {
-    width: 100%;
-    margin-left: 0;
-    transform: none;
+    width: calc(100vw - 1rem);
+    margin: 1.6rem calc(50% - 50vw + 0.5rem) 0;
+    padding-inline: 0.5rem;
+    scroll-padding-inline: 0.5rem;
+  }
+
+  .team-stage__card {
+    flex-basis: min(88vw, 26rem);
+    min-height: 0;
+    padding: 1.25rem;
   }
 
   .team-stage__card--featured,

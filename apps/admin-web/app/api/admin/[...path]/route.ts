@@ -11,6 +11,12 @@ function getBackendUrl() {
   return backendUrl.replace(/\/$/, "");
 }
 
+function getTrustedProxyHeaders() {
+  const proxyToken = process.env.KOVA_BACKEND_PROXY_TOKEN;
+
+  return proxyToken ? { "x-kova-proxy-token": proxyToken } : {};
+}
+
 async function proxyAdminRequest(
   request: NextRequest,
   context: { params: Promise<{ path?: string[] }> },
@@ -30,6 +36,7 @@ async function proxyAdminRequest(
     headers: {
       "content-type": "application/json",
       "x-discord-user-id": session.discordId,
+      ...getTrustedProxyHeaders(),
     },
     body:
       request.method === "GET" || request.method === "HEAD"

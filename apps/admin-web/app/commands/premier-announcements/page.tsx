@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AdminShell } from "../../../components/admin-shell";
 import { SessionGate } from "../../../components/session-gate";
 
@@ -7,7 +8,12 @@ export default function PremierAnnouncementsPage() {
   return (
     <AdminShell>
       <section className="page-header">
-        <div className="tag">Premier Announcements</div>
+        <div className="page-header__row">
+          <div className="tag">Premier Announcements</div>
+          <Link href="/commands" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Shape Premier announcement content</h1>
         <p className="page-copy">
           This is the first command-center workspace for Premier announcements. It gives

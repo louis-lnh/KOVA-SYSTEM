@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { botEnv } from "../config.js";
 import { createKovaEmbed } from "../services/embeds.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import type { BotCommand } from "../types.js";
 
 export const sendApplyPanelCommand: BotCommand = {
@@ -16,10 +17,10 @@ export const sendApplyPanelCommand: BotCommand = {
     .toJSON(),
   async execute(interaction) {
     if (!interaction.channel || !interaction.channel.isSendable()) {
-      await interaction.reply({
-        content: "This channel does not support sending the apply panel.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(
+        interaction,
+        "This channel does not support sending the apply panel.",
+      );
       return;
     }
 
@@ -44,9 +45,6 @@ export const sendApplyPanelCommand: BotCommand = {
       components: [row],
     });
 
-    await interaction.reply({
-      content: "Apply panel sent.",
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(interaction, "Apply panel sent.");
   },
 };

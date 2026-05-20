@@ -8,6 +8,7 @@ import {
   updateRuntimeConfig,
   type RuntimeConfigKey,
 } from "../services/runtime-config.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 
 const configChoiceMap = {
   application_review_channel: "applicationReviewChannelId",
@@ -15,6 +16,8 @@ const configChoiceMap = {
   review_channel: "reviewChannelId",
   success_log_channel: "successLogChannelId",
   verify_channel: "verifyChannelId",
+  website_events_channel: "websiteEventsChannelId",
+  tournament_announcements_channel: "tournamentAnnouncementsChannelId",
 } as const satisfies Record<string, RuntimeConfigKey>;
 
 type ConfigChoice = keyof typeof configChoiceMap;
@@ -46,6 +49,11 @@ export const botConfigCommand: BotCommand = {
           { name: "review_channel", value: "review_channel" },
           { name: "success_log_channel", value: "success_log_channel" },
           { name: "verify_channel", value: "verify_channel" },
+          { name: "website_events_channel", value: "website_events_channel" },
+          {
+            name: "tournament_announcements_channel",
+            value: "tournament_announcements_channel",
+          },
         ),
     )
     .addStringOption((option) =>
@@ -64,18 +72,15 @@ export const botConfigCommand: BotCommand = {
     const rawValue = interaction.options.getString("value", false);
 
     if (action !== "view" && !keyChoice) {
-      await interaction.reply({
-        content: "A config key is required for `set` and `reset`.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(
+        interaction,
+        "A config key is required for `set` and `reset`.",
+      );
       return;
     }
 
     if (action === "set" && !rawValue) {
-      await interaction.reply({
-        content: "A value is required when using `set`.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(interaction, "A value is required when using `set`.");
       return;
     }
 
@@ -86,14 +91,14 @@ export const botConfigCommand: BotCommand = {
         return `- \`${label}\`: ${current ? `\`${current}\`` : "`not set`"}`;
       });
 
-      await interaction.reply({
-        content: [
+      await sendEphemeralResponse(
+        interaction,
+        [
           "Current bot runtime config:",
           ...lines,
           `Storage: \`${getRuntimeConfigPath()}\``,
         ].join("\n"),
-        ephemeral: true,
-      });
+      );
       return;
     }
 
@@ -102,30 +107,30 @@ export const botConfigCommand: BotCommand = {
     if (action === "reset") {
       const nextConfig = resetRuntimeConfig(mappedKey);
 
-      await interaction.reply({
-        content: `Reset \`${keyChoice}\` to ${
+      await sendEphemeralResponse(
+        interaction,
+        `Reset \`${keyChoice}\` to ${
           nextConfig[mappedKey] ? `\`${nextConfig[mappedKey]}\`` : "`not set`"
         }.`,
-        ephemeral: true,
-      });
+      );
       return;
     }
 
     const normalizedValue = normalizeDiscordSnowflake(rawValue!);
 
     if (!normalizedValue) {
-      await interaction.reply({
-        content: "The provided value could not be turned into a valid Discord ID.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(
+        interaction,
+        "The provided value could not be turned into a valid Discord ID.",
+      );
       return;
     }
 
     updateRuntimeConfig(mappedKey, normalizedValue);
 
-    await interaction.reply({
-      content: `Updated \`${keyChoice}\` to \`${normalizedValue}\`.`,
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      `Updated \`${keyChoice}\` to \`${normalizedValue}\`.`,
+    );
   },
 };

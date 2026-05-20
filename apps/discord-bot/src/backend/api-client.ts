@@ -12,6 +12,9 @@ async function request<T>(
       ...(options?.internal
         ? { "x-internal-api-token": botEnv.INTERNAL_API_TOKEN }
         : {}),
+      ...(botEnv.KOVA_BACKEND_PROXY_TOKEN
+        ? { "x-kova-proxy-token": botEnv.KOVA_BACKEND_PROXY_TOKEN }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AdminShell } from "../../../components/admin-shell";
 import { SessionGate } from "../../../components/session-gate";
 
@@ -7,7 +8,12 @@ export default function RuntimeConfigPage() {
   return (
     <AdminShell>
       <section className="page-header">
-        <div className="tag">Command Runtime Notes</div>
+        <div className="page-header__row">
+          <div className="tag">Command Runtime Notes</div>
+          <Link href="/commands" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Keep command-side context in one place</h1>
         <p className="page-copy">
           This page is a simple holding space for the command workflows while we continue

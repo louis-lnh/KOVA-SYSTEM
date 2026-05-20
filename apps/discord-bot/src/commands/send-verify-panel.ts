@@ -5,6 +5,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { createKovaEmbed } from "../services/embeds.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import type { BotCommand } from "../types.js";
 
 export const sendVerifyPanelCommand: BotCommand = {
@@ -15,10 +16,10 @@ export const sendVerifyPanelCommand: BotCommand = {
     .toJSON(),
   async execute(interaction) {
     if (!interaction.channel || !interaction.channel.isSendable()) {
-      await interaction.reply({
-        content: "This channel does not support sending a verification panel.",
-        ephemeral: true,
-      });
+      await sendEphemeralResponse(
+        interaction,
+        "This channel does not support sending a verification panel.",
+      );
       return;
     }
 
@@ -39,9 +40,6 @@ export const sendVerifyPanelCommand: BotCommand = {
       components: [row],
     });
 
-    await interaction.reply({
-      content: "Verification panel sent.",
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(interaction, "Verification panel sent.");
   },
 };

@@ -140,8 +140,8 @@ export function VerificationReview({
             flow is not enough.
           </p>
         </div>
-        <Link className="button button--secondary review-page__back" href="/verifications">
-          Back to Queue
+        <Link className="tag tag--action review-page__back" href="/verifications">
+          Back
         </Link>
       </div>
 

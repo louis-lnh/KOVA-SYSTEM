@@ -32,7 +32,12 @@ export default function CommandsPage() {
   return (
     <AdminShell>
       <section className="page-header page-header--centered">
-        <div className="tag">Command Center</div>
+        <div className="page-header__row">
+          <div className="tag">Command Center</div>
+          <Link href="/actions" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Manage bot-facing workflows</h1>
         <p className="page-copy">
           This section is the admin home for announcement editing, tournament setup, and

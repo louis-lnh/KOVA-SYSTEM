@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { decideVerification } from "../backend/api-client.js";
+import { sendEphemeralResponse } from "../services/interaction-response.js";
 import { ensureManualVerificationDenial } from "../services/verification-service.js";
 import type { BotCommand } from "../types.js";
 
@@ -36,9 +37,9 @@ export const denyVerifyCommand: BotCommand = {
       ? await ensureManualVerificationDenial(guild, user.id, result.effect, reason)
       : "Guild context was unavailable, so the Discord-side denial action was skipped.";
 
-    await interaction.reply({
-      content: `Verification denied for <@${user.id}>. New status: \`${result.record.status}\`. Effect: \`${result.effect}\`. ${followUp}`,
-      ephemeral: true,
-    });
+    await sendEphemeralResponse(
+      interaction,
+      `Verification denied for <@${user.id}>. New status: \`${result.record.status}\`. Effect: \`${result.effect}\`. ${followUp}`,
+    );
   },
 };

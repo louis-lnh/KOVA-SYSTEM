@@ -1,0 +1,5 @@
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location 'C:\KOVA SYSTEM'; npm run dev --workspace @kova/backend"
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location 'C:\KOVA SYSTEM'; npm run dev --workspace @kova/apply-web"
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location 'C:\KOVA SYSTEM'; npm run dev --workspace @kova/admin-web -- --port 3002"
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location 'C:\KOVA SYSTEM'; npm run dev --workspace @kova/discord-bot"
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location 'C:\KOVA SYSTEM'; npm run dev --workspace @kova/main-web -- --port 3003"

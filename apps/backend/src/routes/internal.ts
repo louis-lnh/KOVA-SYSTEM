@@ -6,47 +6,80 @@ import {
 } from "../services/notifications.service.js";
 
 export async function registerInternalRoutes(app: FastifyInstance) {
-  app.get("/ping", async (request, reply) => {
-    const actor = await requireInternalAccess(request, reply);
+  app.get(
+    "/ping",
+    {
+      config: {
+        rateLimit: {
+          max: 120,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireInternalAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    return {
-      ok: true,
-      scope: "internal",
-      timestamp: new Date().toISOString(),
-    };
-  });
+      return {
+        ok: true,
+        scope: "internal",
+        timestamp: new Date().toISOString(),
+      };
+    },
+  );
 
-  app.get("/notifications/pending", async (request, reply) => {
-    const actor = await requireInternalAccess(request, reply);
+  app.get(
+    "/notifications/pending",
+    {
+      config: {
+        rateLimit: {
+          max: 120,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireInternalAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const query = request.query as { type?: string };
-    const items = await listPendingNotifications(query.type);
+      const query = request.query as { type?: string };
+      const items = await listPendingNotifications(query.type);
 
-    return {
-      items,
-    };
-  });
+      return {
+        items,
+      };
+    },
+  );
 
-  app.post("/notifications/:notificationId/sent", async (request, reply) => {
-    const actor = await requireInternalAccess(request, reply);
+  app.post(
+    "/notifications/:notificationId/sent",
+    {
+      config: {
+        rateLimit: {
+          max: 120,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireInternalAccess(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const { notificationId } = request.params as { notificationId: string };
-    const item = await markNotificationSent(notificationId);
+      const { notificationId } = request.params as { notificationId: string };
+      const item = await markNotificationSent(notificationId);
 
-    return {
-      item,
-    };
-  });
+      return {
+        item,
+      };
+    },
+  );
 }

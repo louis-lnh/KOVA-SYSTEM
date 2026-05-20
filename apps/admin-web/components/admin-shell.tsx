@@ -76,6 +76,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               <Link className="nav-link" href="/actions">
                 Actions
               </Link>
+              {session.accessLevel === "admin" || session.accessLevel === "full" ? (
+                <Link className="nav-link" href="/audit">
+                  Audit Logs
+                </Link>
+              ) : null}
             </nav>
           ) : (
             <div className="nav-links nav-links--empty" aria-hidden="true" />
@@ -171,6 +176,15 @@ function ShellInner({ children }: { children: React.ReactNode }) {
                           >
                             Admin Actions
                           </Link>
+                          {hasRequiredAccess(session.accessLevel, "admin") ? (
+                            <Link
+                              className="account-menu__item"
+                              href="/audit"
+                              onClick={() => setProfileOpen(false)}
+                            >
+                              Audit Logs
+                            </Link>
+                          ) : null}
                           {hasRequiredAccess(session.accessLevel, "full") ? (
                             <Link
                               className="account-menu__item"

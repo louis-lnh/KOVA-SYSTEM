@@ -9,7 +9,12 @@ export default function ActionsPage() {
   return (
     <AdminShell>
       <section className="page-header page-header--centered">
-        <div className="tag">Admin Actions</div>
+        <div className="page-header__row">
+          <div className="tag">Admin Actions</div>
+          <Link href="/" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Choose a category</h1>
         <p className="page-copy">
           The admin panel is split into main categories so staff can quickly

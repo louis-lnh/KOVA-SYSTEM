@@ -22,9 +22,11 @@ export async function GET() {
   }
 
   try {
+    const proxyToken = process.env.KOVA_BACKEND_PROXY_TOKEN;
     const response = await fetch(`${backendUrl}/auth/session`, {
       headers: {
         "x-discord-user-id": session.discordId,
+        ...(proxyToken ? { "x-kova-proxy-token": proxyToken } : {}),
       },
       cache: "no-store",
     });

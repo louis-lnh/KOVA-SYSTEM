@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminShell } from "../../../components/admin-shell";
+import Link from "next/link";
 import { SessionGate } from "../../../components/session-gate";
 import { WebsiteWorkspace } from "../../../components/website-workspace";
 
@@ -8,7 +9,12 @@ export default function WebsiteTeamPage() {
   return (
     <AdminShell>
       <section className="page-header">
-        <div className="tag">Main Website</div>
+        <div className="page-header__row">
+          <div className="tag">Main Website</div>
+          <Link href="/website" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Team Page Workspace</h1>
         <p className="page-copy">
           Use this section to settle the public lineup framing, the lead player

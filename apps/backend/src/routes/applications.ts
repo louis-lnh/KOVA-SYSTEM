@@ -88,31 +88,42 @@ export async function registerApplicationRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/", async (request, reply) => {
-    const actor = await requireAuthenticatedUser(request, reply);
+  app.post(
+    "/",
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await requireAuthenticatedUser(request, reply);
 
-    if (!actor) {
-      return;
-    }
+      if (!actor) {
+        return;
+      }
 
-    const parseResult = applicationSubmissionSchema.safeParse(request.body);
+      const parseResult = applicationSubmissionSchema.safeParse(request.body);
 
-    if (!parseResult.success) {
-      return reply.code(400).send({
-        error: "Invalid application payload",
-        issues: parseResult.error.flatten(),
+      if (!parseResult.success) {
+        return reply.code(400).send({
+          error: "Invalid application payload",
+          issues: parseResult.error.flatten(),
+        });
+      }
+
+      const application = await createApplicationForDiscordUser(
+        actor.discordId,
+        parseResult.data,
+      );
+
+      return reply.code(201).send({
+        application,
       });
-    }
-
-    const application = await createApplicationForDiscordUser(
-      actor.discordId,
-      parseResult.data,
-    );
-
-    return reply.code(201).send({
-      application,
-    });
-  });
+    },
+  );
 
   app.patch("/:applicationId", async (request, reply) => {
     const actor = await requireAdminAccess(request, reply);

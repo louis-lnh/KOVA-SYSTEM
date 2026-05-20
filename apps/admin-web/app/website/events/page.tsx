@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminShell } from "../../../components/admin-shell";
+import Link from "next/link";
 import { SessionGate } from "../../../components/session-gate";
 import { WebsiteWorkspace } from "../../../components/website-workspace";
 import { WebsiteEventsManager } from "../../../components/website-events-manager";
@@ -9,7 +10,12 @@ export default function WebsiteEventsPage() {
   return (
     <AdminShell>
       <section className="page-header">
-        <div className="tag">Main Website</div>
+        <div className="page-header__row">
+          <div className="tag">Main Website</div>
+          <Link href="/website" className="tag tag--action">
+            Back
+          </Link>
+        </div>
         <h1 className="page-title">Events Content Workspace</h1>
         <p className="page-copy">
           This area prepares the public event layer before it is driven by
